@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  member   Member?
+  payments Payment[]
+
+  @@map("users")
+}
+
+model Member {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  phone        String   @unique
+  address      String?
+  monthlyFee   Int      @default(1000) // Monthly contribution amount in BDT
+  totalBalance Int      @default(0)
+  dueAmount    Int      @default(0)
+  isActive     Boolean  @default(true)
+  
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@map("members")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  memberId        String
+  userId          String
+  amount          Int
+  paymentMethod   PaymentMethod
+  transactionId   String?       // For bKash/Nagad
+  cashNote        String?       // For cash payments
+  paymentDate     DateTime      @default(now())
+  approved        Boolean       @default(false)
+  approvedBy      String?       // Accountant user ID
+  approvedAt      DateTime?
+  status          PaymentStatus @default(PENDING)
+  
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Fund {
+  id              String   @id @default(cuid())
+  name            String   @default("FDS")
+  totalAmount     Int      @default(0)
+  totalMembers    Int      @default(0)
+  monthlyCollected Int     @default(0)
+  lastUpdated     DateTime @default(now())
+
+  @@map("funds")
+}
+
+enum Role {
+  ACCOUNTANT
+  MEMBER
+}
+
+enum PaymentMethod {
+  BKASH
+  NAGAD
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
